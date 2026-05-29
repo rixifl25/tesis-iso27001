@@ -30,7 +30,7 @@ const apiInstanceFunction = (url_api) => {
             }
             if (error.response?.status === 401) {
                 localStorage.clear()
-                location.href = location.origin
+                location.href = `${location.origin}/login`
             }
             return Promise.reject(error)
         }
