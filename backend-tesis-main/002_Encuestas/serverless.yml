@@ -1,0 +1,125 @@
+service: encuestas-tesis-service
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  profile: ${opt:profile, 'developer-tesis'}
+  region: us-east-1 
+  runtime: python3.12
+  stage: ${opt:stage, 'dev'}
+  environment:
+    MONGO_DB_USER: "developer"
+    MONGO_DB_PASS: "t3z80TJV8s$pasT"
+    MONGO_DB_URL: "ec2-3-88-159-104.compute-1.amazonaws.com"
+    MONGO_DB_PORT: 27017
+    MONGO_DB_NAME: "tesis_bd"
+    COGNITO_USER_POOL_ID: "us-east-1_VrOEdVz1T"
+  iam:
+    role:
+      managedPolicies:
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+      statements:        
+        - Effect: "Allow"
+          Action:
+            - "cognito-idp:AdminCreateUser"
+            - "cognito-idp:AdminSetUserPassword"
+            - "cognito-idp:AdminUpdateUserAttributes"
+            - "cognito-idp:AdminEnableUser"
+          Resource: "arn:aws:cognito-idp:us-east-1:528757792558:userpool/us-east-1_VrOEdVz1T"        
+  deploymentBucket:
+    name: "tesis-${self:provider.stage}"
+    serverSideEncryption: AES256
+
+functions:
+  crearUsuario:
+    handler: handler.handler
+    events:
+      - http:
+          path: crear-usuario
+          method: post
+          cors: true
+  userConfigData:
+    handler: handler.handler
+    events:
+      - http:
+          path: user-config-data
+          method: get
+          cors: true
+          authorizer:
+            arn: 'arn:aws:cognito-idp:us-east-1:528757792558:userpool/us-east-1_VrOEdVz1T'
+
+  generalData:
+    handler: handler.handler
+    events:
+      - http:
+          path: general-data
+          method: get
+          cors: true
+          authorizer:
+            arn: 'arn:aws:cognito-idp:us-east-1:528757792558:userpool/us-east-1_VrOEdVz1T'
+  evaluaciones:
+    handler: handler.handler
+    timeout: 30
+    events:
+      - http:
+          path: evaluaciones
+          method: get
+          cors: true
+          authorizer:
+            arn: 'arn:aws:cognito-idp:us-east-1:528757792558:userpool/us-east-1_VrOEdVz1T'
+  finalizarEvaluacion:
+    handler: handler.handler
+    timeout: 30
+    events:
+      - http:
+          path: guardar-evaluacion
+          method: post
+          cors: true
+          authorizer:
+            arn: 'arn:aws:cognito-idp:us-east-1:528757792558:userpool/us-east-1_VrOEdVz1T'
+  #agregarResultados:
+    #handler: handler.handler
+    #timeout: 30
+    #events:
+      #- http:
+          #path: agregar-resultado-evaluacion
+          #method: post
+          #cors: true
+          #authorizer:
+            #arn: 'arn:aws:cognito-idp:us-east-1:528757792558:userpool/us-east-1_VrOEdVz1T'
+  #resultadoEvaluacionid:
+    #handler: handler.handler
+    #timeout: 30
+    #events:
+      #- http:
+          #path: evaluacion-por-id
+          #method: post
+          #cors: true
+          #authorizer:
+            #arn: 'arn:aws:cognito-idp:us-east-1:528757792558:userpool/us-east-1_VrOEdVz1T'
+  
+plugins:
+  - serverless-python-requirements
+  - serverless-wsgi
+  - serverless-deployment-bucket
+
+custom:
+  wsgi:
+    app: general.wsgi.application
+  pythonRequirements:
+    fileName: requirements.txt
+
+package:
+  exclude:
+    - venv/**
+    - __pycache__/*
+    - node_modules/**
+    - README.md
+    - pytest.ini
+    - conftest.py
+    - .venv
+    - .venv.example
+    - package.json
+    - package-lock.json
+

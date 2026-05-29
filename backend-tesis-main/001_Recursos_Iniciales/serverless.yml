@@ -1,0 +1,87 @@
+service: recursos-basicos-tesis # NOTE: update this with your service name
+
+provider:
+  name: aws
+  runtime: dotnet6
+  region: us-east-1
+  profile: ${opt:profile, 'developer-tesis'}
+  stage: ${opt:stage, 'dev'}
+  tags:
+    Env: "${self:provider.stage}"
+    Proyecto: "Tesis"
+package:
+  individually: true
+
+resources:
+  Resources:
+    LambdaArtifactsBucket:
+        Type: 'AWS::S3::Bucket'
+        Properties:
+          BucketName: "tesis-${self:provider.stage}"
+          BucketEncryption:
+            ServerSideEncryptionConfiguration:
+              - ServerSideEncryptionByDefault:
+                  SSEAlgorithm: AES256
+          CorsConfiguration:
+            CorsRules:
+              - AllowedHeaders:
+                  - "*"
+                AllowedMethods:
+                  - PUT
+                  - POST
+                  - DELETE
+                  - GET
+                AllowedOrigins:
+                  - "*"              
+          PublicAccessBlockConfiguration:
+            BlockPublicAcls: true
+            BlockPublicPolicy: true
+            IgnorePublicAcls: true
+            RestrictPublicBuckets: true     
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties: 
+        UserPoolName: "tesis-web-${self:provider.stage}-user-pool"
+        AdminCreateUserConfig: 
+          AllowAdminCreateUserOnly: true
+          InviteMessageTemplate:
+            EmailMessage: Su usuario es {username} y su clave temporal es {####} 
+            EmailSubject: Clave temporal
+            SMSMessage: Su usuario es {username} y su clave temporal es {####}.
+        AliasAttributes:
+          - preferred_username
+          - email
+        AutoVerifiedAttributes: 
+          - email
+        EmailVerificationMessage: Su código de verificación es {####}.
+        EmailVerificationSubject: Código de verificación
+        MfaConfiguration: OFF
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: true
+            RequireUppercase: true
+            TemporaryPasswordValidityDays: 7
+        Schema:
+          - Name: email
+            AttributeDataType: String
+            Mutable: true
+            Required: true
+          - Name: preferred_username
+            AttributeDataType: String
+            Mutable: true
+            Required: false
+        EmailConfiguration: 
+          EmailSendingAccount: DEVELOPER
+          From: pepogodtesis@gmail.com
+          SourceArn: arn:aws:ses:us-east-1:528757792558:identity/pepogodtesis@gmail.com
+
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: "tesis-web-${self:provider.stage}-user-pool-client"
+        UserPoolId:
+          Ref: CognitoUserPool
+        GenerateSecret: false
